@@ -1,5 +1,5 @@
 1. Introduction
-This document outlines the implementation plan for building a secure, full-stack, multi-tenant Document Management Service (DMS). The backend will be built using Spring Boot, following SOLID principles and established design patterns. The frontend will be a modern Single Page Application (SPA) built with React and TypeScript. This plan ensures a high-quality, maintainable, and user-friendly application.
+This document outlines the implementation plan for building a secure, full-stack, multi-tenant Document Management Service (DMS). The backend will be built using Spring Boot, following SOLID principles and established design patterns. The frontend will be a modern Single Page Application (SPA) built with React and TypeScript. This plan includes a powerful content search feature using ZincSearch for local development and Elasticsearch for production, ensuring a high-quality, maintainable, and user-friendly application.
 
 2. Project Goals
 Multi-Tenancy: Support multiple tenants with strict data isolation. A user can be a member of multiple tenants but can only operate within one tenant context at a time.
@@ -8,7 +8,7 @@ Intuitive Frontend: Provide a clean, responsive, and user-friendly web interface
 
 Document Management: Allow users to upload various document types (PDF, DOC, TXT, EML, etc.), associate them with cases/batches, and add descriptive tags.
 
-Search: Provide a robust search functionality based on tags and other metadata.
+Advanced Search: Provide a robust search functionality based on both metadata (tags, filenames) and full-text content search within the documents themselves.
 
 Security & Compliance:
 
@@ -18,65 +18,71 @@ Implement tenant-specific document retention policies.
 
 Scalability & Maintainability: Build a scalable and maintainable solution with a clear, layered architecture guided by SOLID principles for both frontend and backend.
 
-Developer Experience: Provide an easy-to-set-up local development environment for both the backend (H2, Minio) and frontend.
+Developer Experience: Provide an easy-to-set-up local development environment for the backend (H2, Minio), frontend, and search index (ZincSearch).
 
 3. Architecture
 3.1. High-Level Design
-The system will consist of two main components: a Spring Boot backend providing a REST API, and a React frontend acting as the client.
+The system will consist of three main components: a Spring Boot backend, a React frontend, and a search engine instance for indexing.
 
-Backend (REST API): A monolithic Spring Boot application responsible for all business logic, data persistence, and file storage.
+Backend (REST API): A monolithic Spring Boot application responsible for all business logic, data persistence, and file storage. It will also handle text extraction and indexing.
 
-Frontend (SPA): A React/TypeScript Single Page Application that consumes the backend API. It will be responsible for all UI rendering and user interaction.
+Frontend (SPA): A React/TypeScript Single Page Application that consumes the backend API.
+
+Search Engine:
+
+Local/Test: ZincSearch for a lightweight, easy-to-manage local setup.
+
+Production: Elasticsearch for its robust features, scalability, and ecosystem.
 
 3.2. Backend Architecture
-API Layer (Controllers): Responsible for handling HTTP requests, request validation, and delegating to the service layer.
+API Layer (Controllers): Handles HTTP requests, validation, and delegation.
 
-Service Layer: Contains the core business logic, designed around interfaces.
+Service Layer: Contains the core business logic.
 
-Data Access Layer (Repositories): Interacts with the database and object storage service.
+Data Access Layer (Repositories): Interacts with the primary database.
 
 Object Storage Service: An abstraction for handling file storage (Minio/S3).
 
+Search Indexing Service: An abstraction (SearchService interface) responsible for communicating with the search engine. We will have two implementations:
+
+ZincSearchService: Used when the local or test Spring profile is active.
+
+ElasticsearchService: Used when the prod Spring profile is active.
+
+Text Extraction Service: A dedicated service using Apache Tika to extract text from documents.
+
 3.3. Frontend Architecture
-Framework: React with TypeScript for type safety.
+Framework: React with TypeScript.
 
-Component Library: A modern component library like Shadcn/ui or MUI will be used for a consistent look and feel and to accelerate development.
+Component Library: Shadcn/ui or MUI.
 
-State Management: Zustand or React Context for managing global state, such as the current user, active tenant, and authentication status.
+State Management: Zustand or React Context.
 
-API Communication: Axios will be used to create a dedicated API client for interacting with the backend REST endpoints. An interceptor will be configured to automatically attach the JWT and X-Tenant-ID header to requests.
+API Communication: Axios with an interceptor for JWT and X-Tenant-ID headers.
 
-Routing: React Router will be used for client-side navigation.
+Routing: React Router.
 
 3.4. Multi-Tenancy Strategy
-The strategy remains the same, but the frontend will now be responsible for managing the active tenant.
-
-After login, the frontend will receive a JWT containing the user's tenant memberships.
-
-The UI will provide a mechanism (e.g., a dropdown in the header) for the user to select their active tenant.
-
-The selected tenant_id will be stored in the global state and sent with every API request via the X-Tenant-ID header.
+The strategy remains the same. The tenant_id will be included in the search index (both ZincSearch and Elasticsearch) for every document to ensure search queries are also isolated by tenant.
 
 3.5. Technology Stack
 Backend:
 
 Spring Boot 3.x, Spring Data JPA, Hibernate, Spring Security, JWT
 
-Utility Libraries: Lombok, Apache Commons IO/Lang
+Utility Libraries: Lombok, Apache Tika (for text extraction), Apache Commons IO/Lang
 
 Frontend:
 
-React 18+, TypeScript
-
-Build Tool: Vite
-
-Routing: React Router
-
-API Client: Axios
+React 18+, TypeScript, Vite, React Router, Axios, Zustand
 
 UI: Shadcn/ui or MUI
 
-State Management: Zustand
+Search:
+
+ZincSearch (for local/testing)
+
+Elasticsearch (for production)
 
 Database: H2 (local), PostgreSQL/MySQL (prod)
 
@@ -85,10 +91,10 @@ Object Storage: Minio (local), AWS S3 (prod)
 Build/Containerization: Maven/Gradle, Docker, Docker Compose
 
 3.6. Design Principles & Patterns
-The principles remain the same, applied to both backend and frontend where applicable (e.g., Single Responsibility for React components, Dependency Inversion with custom hooks).
+The principles remain the same, with the new SearchService interface being a prime example of the Open/Closed and Liskov Substitution principles.
 
 4. Database Schema
-The database schema remains unchanged.
+The primary database schema remains unchanged.
 
 5. Implementation Phases
 Phase 1: Core Infrastructure & Multi-Tenancy (Sprint 1-2)
@@ -96,101 +102,105 @@ Backend Tasks:
 
 Initialize Spring Boot project, configure profiles, set up H2/Minio.
 
+Implement the SearchService interface and the ZincSearchService implementation for local development.
+
 Implement TenantFilter and Hibernate filters.
 
 Create initial schema.
 
 Frontend Tasks:
 
-Initialize React/TypeScript project using Vite.
+Initialize React/TypeScript project, set up structure and libraries.
 
-Set up project structure, install libraries (React Router, Axios, Zustand).
+Create the main application layout and a mock login/tenant switcher.
 
-Create the main application layout (header, sidebar, content area).
-
-Implement a mock login flow and a tenant switcher UI.
-
-Deliverables: A runnable backend with multi-tenancy support and a basic frontend shell.
+Deliverables: A runnable backend with multi-tenancy support, a basic frontend shell, and a docker-compose.yml that starts a ZincSearch service for the local environment.
 
 Phase 2: Document & Case Management (Sprint 3-4)
-Backend Tasks: Develop REST endpoints for document and case management.
+Backend Tasks:
+
+Develop REST endpoints for document and case management.
+
+On document upload, use Apache Tika to extract text content and call the SearchService to index it in ZincSearch.
 
 Frontend Tasks:
 
 Create a dedicated API service using Axios.
 
-Build React components for uploading documents (e.g., a file dropzone).
-
-Create forms for creating cases and adding tags.
+Build React components for uploading documents, creating cases, and adding tags.
 
 Develop a view to display documents within a case.
 
-Deliverables: A functional API and UI for uploading and managing documents.
+Deliverables: A functional API and UI for uploading and managing documents, with content being indexed automatically.
 
 Phase 3: Search & Retrieval (Sprint 5)
-Backend Tasks: Implement search endpoint using JPA Specifications.
+Backend Tasks:
+
+Enhance the search endpoint to accept content search queries. It will call the SearchService to get matching document IDs, then fetch the full metadata for those IDs from the primary database.
 
 Frontend Tasks:
 
-Build a search bar and filter components.
+Build a search bar and filter components for both metadata and content-based searches.
 
-Create a view to display search results.
+Create a view to display combined search results.
 
-Implement logic to handle document downloads initiated from the UI.
+Implement logic for document downloads.
 
-Deliverables: A UI where users can search for and download their documents.
+Deliverables: A UI where users can search for documents by filename, tags, or the text inside them.
 
 Phase 4: Retention Policies & Security (Sprint 6-7)
 Backend Tasks:
 
-Implement the retention policy service (Strategy Pattern) and scheduled job.
+Implement the retention policy service and scheduled job. When a document is deleted, ensure its corresponding entry is also removed from the search index via the SearchService.
 
 Implement JWT-based authentication and authorization endpoints.
 
 Frontend Tasks:
 
-Implement the full authentication flow (login page, token storage, private routes).
+Implement the full authentication flow.
 
-Connect the tenant switcher to the API to validate and set the active tenant.
+Connect the tenant switcher to the API.
 
-Implement role-based rendering of UI elements.
+Implement role-based rendering.
 
-Deliverables: A secure application with a complete login/logout flow and automated data retention.
+Deliverables: A secure application with a complete login flow and automated data retention across all data stores.
 
 Phase 5: Testing & Deployment (Sprint 8)
-Backend Tasks: Write unit and integration tests.
+Backend Tasks: Write unit and integration tests. Implement the ElasticsearchService and configure it for the prod profile.
 
-Frontend Tasks: Write component and integration tests using Jest and React Testing Library.
+Frontend Tasks: Write component and integration tests.
 
 Deployment Tasks:
 
 Update Dockerfile for the backend.
 
-Create a Dockerfile for the frontend (e.g., using a multi-stage build with Nginx).
+Create a Dockerfile for the frontend.
 
-Update docker-compose.yml to orchestrate the backend, frontend, database, and object storage.
+Update docker-compose.yml to orchestrate the local environment.
+
+Create production deployment scripts (e.g., Kubernetes manifests) that connect to a managed Elasticsearch service.
 
 Deliverables: A fully tested and deployable full-stack application.
 
 6. Local Development Environment
 Requirements: Java (JDK 17+), Node.js (v18+), Maven/Gradle, Docker.
 
-Setup: docker-compose.yml will orchestrate the backend services. The React development server will be run separately and proxy API requests to the backend.
+Setup: docker-compose.yml will orchestrate the backend services (database, object storage, ZincSearch). The React dev server will run separately.
 
 7. Production Considerations
-Deployment: The frontend will be built into a static bundle and served efficiently by a web server like Nginx, which will also act as a reverse proxy to the backend Spring Boot application.
+Deployment: The frontend will be served by Nginx, which will also reverse proxy to the backend.
 
-CORS: The backend will need to be configured with a CORS policy to allow requests from the frontend domain.
+CORS: The backend will need a CORS policy for the frontend domain.
+
+Search Engine Management: For production, you will need to provision, configure, and monitor a managed Elasticsearch cluster (e.g., on AWS, GCP, or Elastic Cloud). This includes planning for scaling, backup, and recovery.
 
 8. Risks and Mitigation
-Backend Risks: Data security, performance, retention policy complexity (mitigations remain the same).
+Backend Risks: Data security, performance (mitigations remain the same).
 
-Frontend Risks:
+Frontend Risks: State management complexity, responsive UI (mitigations remain the same).
 
-Risk: Managing complex state across the application can become difficult.
+New Risk: Content Indexing and Extraction
 
-Mitigation: Adopt a clear state management strategy from the start (e.g., Zustand) and establish patterns for its use.
+Risk: Text extraction can fail for corrupted or unsupported document formats. The search index could become out of sync with the primary database if an operation fails midway.
 
-Risk: Ensuring a consistent and responsive UI across different devices.
-
-Mitigation: Use a battle-tested component library and employ a mobile-first design approach.
+Mitigation: Implement robust error handling and logging for the Tika extraction process. Use transactional logic or compensating transactions (e.g., a cleanup job) to ensure the search index and database remain consistent. This applies to both ZincSearch and Elasticsearch.
