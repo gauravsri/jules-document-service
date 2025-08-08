@@ -1,11 +1,25 @@
-import { Box, Divider, Typography } from '@mui/material';
+import { Box, Button, Divider, List, ListItem, ListItemText, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import CreateCase from '../components/CreateCase';
 import UploadDocument from '../components/UploadDocument';
+import { downloadDocument } from '../services/api';
+
+// Mock document data
+const mockDocuments = [
+    { id: 101, name: 'report-final.pdf', contentType: 'application/pdf' },
+    { id: 102, name: 'meeting-notes.docx', contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+];
 
 export default function CaseDetailPage() {
     const { caseId } = useParams<{ caseId: string }>();
     const numericCaseId = Number(caseId);
+
+    const handleDownload = (id: number, filename: string) => {
+        downloadDocument(id, filename).catch(err => {
+            console.error("Download failed:", err);
+            alert("Failed to download file.");
+        });
+    };
 
     return (
         <Box>
@@ -35,8 +49,17 @@ export default function CaseDetailPage() {
             <Typography variant="h6" sx={{ mt: 4 }}>
                 Documents in this Case
             </Typography>
-            {/* Placeholder for document list */}
-            <p>Document list will go here. In a real app, this would be a table or list of documents fetched from the API.</p>
+            <List>
+                {mockDocuments.map(doc => (
+                    <ListItem key={doc.id} secondaryAction={
+                        <Button variant="outlined" size="small" onClick={() => handleDownload(doc.id, doc.name)}>
+                            Download
+                        </Button>
+                    }>
+                        <ListItemText primary={doc.name} secondary={doc.contentType} />
+                    </ListItem>
+                ))}
+            </List>
         </Box>
     );
 }

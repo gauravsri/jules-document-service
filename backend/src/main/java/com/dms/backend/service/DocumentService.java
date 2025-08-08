@@ -9,7 +9,12 @@ import com.dms.backend.repository.DocumentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.dms.backend.dto.DocumentResource;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.InputStream;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class DocumentService {
@@ -61,5 +66,38 @@ public class DocumentService {
         }
 
         return savedDoc;
+    }
+
+    public List<Document> searchDocuments(String query) {
+        String tenantId = TenantContext.getCurrentTenant();
+        if (tenantId == null) {
+            // Or throw an exception, depending on desired behavior for missing tenant
+            return List.of();
+        }
+
+        // 1. Get document IDs from search service
+        List<String> documentIds = searchService.searchDocuments(tenantId, query).block(); // Block to get result
+
+        if (documentIds == null || documentIds.isEmpty()) {
+            return List.of();
+        }
+
+        // 2. Convert IDs to Long
+        List<Long> longIds = documentIds.stream()
+                                        .map(Long::parseLong)
+                                        .collect(Collectors.toList());
+
+        // 3. Fetch full documents from the database
+        return documentRepository.findAllById(longIds);
+    }
+
+    public DocumentResource downloadDocument(Long id) {
+        // This lookup is tenant-aware due to the Hibernate filter
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Document not found with id: " + id));
+
+        InputStream inputStream = minioService.getFile(doc.getStoragePath());
+
+        return new DocumentResource(inputStream, doc.getContentType(), doc.getOriginalFilename());
     }
 }

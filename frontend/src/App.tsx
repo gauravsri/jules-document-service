@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import LoginPage from './components/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import CaseDetailPage from './pages/CaseDetailPage';
+import SearchResultsPage from './pages/SearchResultsPage';
 import { useAuthStore } from './stores/useAuthStore';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
               </div>
             } />
             <Route path="/cases/:caseId" element={<CaseDetailPage />} />
+            <Route path="/search" element={<SearchResultsPage />} />
         </Route>
       </Route>
     </Routes>

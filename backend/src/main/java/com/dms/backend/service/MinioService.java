@@ -1,6 +1,7 @@
 package com.dms.backend.service;
 
 import io.minio.BucketExistsArgs;
+import io.minio.GetObjectArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
 import java.util.UUID;
 
 @Service
@@ -43,6 +45,18 @@ public class MinioService {
         } catch (Exception e) {
             // In a real app, use a custom exception and better logging
             throw new RuntimeException("Error uploading file to Minio: " + e.getMessage(), e);
+        }
+    }
+
+    public InputStream getFile(String objectName) {
+        try {
+            return minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectName)
+                            .build());
+        } catch (Exception e) {
+            throw new RuntimeException("Error getting file from Minio: " + e.getMessage(), e);
         }
     }
 }

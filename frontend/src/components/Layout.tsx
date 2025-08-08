@@ -1,5 +1,6 @@
 import { AppBar, Box, Toolbar, Typography } from '@mui/material';
 import { Outlet } from 'react-router-dom';
+import SearchBar from './SearchBar';
 import TenantSwitcher from './TenantSwitcher';
 
 export default function Layout() {
@@ -10,6 +11,8 @@ export default function Layout() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             DMS
           </Typography>
+          <SearchBar />
+          <Box sx={{ mx: 1 }} />
           <TenantSwitcher />
         </Toolbar>
       </AppBar>

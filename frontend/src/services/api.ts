@@ -39,4 +39,30 @@ export const uploadDocument = async (file: File, caseId: number) => {
     return response.data;
 };
 
+// --- Search API ---
+export const searchDocuments = async (query: string) => {
+    const response = await apiClient.get('/documents/search', {
+        params: { q: query },
+    });
+    return response.data;
+};
+
+export const downloadDocument = async (id: number, filename: string) => {
+    const response = await apiClient.get(`/documents/${id}/download`, {
+        responseType: 'blob', // Important for handling file downloads
+    });
+
+    // Create a URL for the blob
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename); // Use the filename from metadata
+    document.body.appendChild(link);
+    link.click();
+
+    // Clean up
+    link.parentNode?.removeChild(link);
+    window.URL.revokeObjectURL(url);
+};
+
 export default apiClient;
